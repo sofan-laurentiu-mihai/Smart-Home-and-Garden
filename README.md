@@ -1,6 +1,5 @@
 # Smart Home and Garden 🌿
-An integrated IoT solution combining precision agriculture with interactive environmental education. 
-This project was developed and showcased during the **Emerson STEM DAY** event. 🚀
+This project was developed and presented during the **Emerson STEM DAY** event. 🚀
 ## Description 📖
 The **Smart Home and Garden** is a dual-purpose platform designed to promote sustainability. 
 First, it features an **Automated Irrigation System** that utilizes soil moisture sensors to ensure plants are watered only when necessary, preventing water waste. Second, it hosts a **Wireless Control Hub** via an ESP32, which serves an interactive web interface. Through this hub, users can manage hardware indicators and participate in a **Sustainability Quiz** designed to educate users on recycling and circular economy principles.
