@@ -1,0 +1,242 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+// LED pins
+const int redLED = 25;
+const int greenLED = 17;
+const int blueLED = 16;
+
+bool redOn = false;
+bool greenOn = false;
+bool blueOn = false;
+
+// WiFi Access Point credentials
+const char* ssid = "LED_Controller";
+const char* password = "led12345";
+
+WebServer server(80);
+
+// HTML Page
+const char* htmlPage = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 LED Control</title>
+  <style>
+    body { font-family: Arial; text-align: center; background: #111; color: #fff; }
+    h1 { font-size: 28px; }
+    button {
+      font-size: 20px;
+      padding: 15px 30px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .red { background-color: #ff3333; color: white; }
+    .green { background-color: #33cc33; color: white; }
+    .blue { background-color: #3399ff; color: white; }
+    .on { background-color: #555; color: black; }
+    .off { background-color: #555; color: white; }
+    .quiz { background-color: orange; color: black; }
+  </style>
+</head>
+<body>
+  <h1>ESP32 LED Control</h1>
+  <button class="red" onclick="sendCommand('red')">Red</button><br>
+  <button class="green" onclick="sendCommand('green')">Green</button><br>
+  <button class="blue" onclick="sendCommand('blue')">Blue</button><br><br>
+  <button class="on" onclick="sendCommand('all_on')">All On</button>
+  <button class="off" onclick="sendCommand('all_off')">All Off</button><br><br>
+  <button onclick="location.href='/quiz'" class="quiz">Quiz!</button><br><br>
+  <button onclick="sendCommand('status')">Status</button>
+  <pre id="output"></pre>
+  <script>
+    function sendCommand(cmd) {
+      fetch('/' + cmd)
+        .then(response => response.text())
+        .then(data => document.getElementById("output").innerText = data);
+    }
+  </script>
+</body>
+</html>
+)rawliteral";
+
+const char* quiz = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quiz</title>
+  <style>
+    body { font-family: Arial; background-color: #222; color: white; text-align: center; padding: 20px; }
+    .question { font-size: 20px; margin: 20px; }
+    .option {
+      display: block;
+      background: #444;
+      color: white;
+      padding: 20px;
+      margin: 15px auto;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 24px;
+    }
+    .option:hover { background-color: #666; }
+    .correct { background-color: green !important; }
+    .incorrect { background-color: red !important; }
+  </style>
+</head>
+<body>
+  <h1>Quiz time!</h1>
+
+  <div class="question-block">
+    <div class="question">1. Ce înseamnă reciclarea?</div>
+    <div class="option" onclick="checkAnswer(this, true)">Refolosirea materialelor vechi pentru a face lucruri noi</div>
+    <div class="option" onclick="checkAnswer(this, false)">Aruncarea gunoaielor la gunoi</div>
+    <div class="option" onclick="checkAnswer(this, false)">Economisirea apei de la robinet</div>
+    <div class="option" onclick="checkAnswer(this, false)">Pictarea cu culori reciclate</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">2. Care este o limitare importantă a reciclării ca strategie de sustenabilitate?</div>
+    <div class="option" onclick="checkAnswer(this, false)">Este prea scumpă</div>
+    <div class="option" onclick="checkAnswer(this, false)">Totul poate fi reciclat</div>
+    <div class="option" onclick="checkAnswer(this, false)">Oamenii nu separă corect materialele</div>
+    <div class="option" onclick="checkAnswer(this, true)">Multe materiale își pierd calitatea la fiecare ciclu de reciclare</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">3. De ce este biodiversitatea esențială pentru sustenabilitate?</div>
+    <div class="option" onclick="checkAnswer(this, false)">Face pădurile mai colorate</div>
+    <div class="option" onclick="checkAnswer(this, true)">Asigură reziliența ecosistemelor în fața schimbărilor și stresului</div>
+    <div class="option" onclick="checkAnswer(this, false)">Ajută oamenii de știință să descopere specii</div>
+    <div class="option" onclick="checkAnswer(this, false)">Ne oferă mai multe animale de companie</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">4. Care este scopul principal al unei economii circulare?</div>
+    <div class="option" onclick="checkAnswer(this, true)">Să elimine risipa și să mențină materialele în uz cât mai mult timp</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să facă reciclarea mai ușoară</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să crească rapid economia</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să producem cât mai multe bunuri</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">5. Ce putem face pentru a economisi energie acasă?</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să aprindem toate luminile</div>
+    <div class="option" onclick="checkAnswer(this, true)">Să stingem lumina când ieșim din cameră</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să folosim televizorul toată ziua</div>
+    <div class="option" onclick="checkAnswer(this, false)">Să ținem frigiderul deschis o perioadă îndelungată</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">6. Care este impactul folosirii combustibililor fosili asupra schimbărilor climatice?</div>
+    <div class="option" onclick="checkAnswer(this, true)">Contribuie semnificativ la încălzirea globală</div>
+    <div class="option" onclick="checkAnswer(this, false)">Reduce efectul de seră</div>
+    <div class="option" onclick="checkAnswer(this, false)">Este benefic pentru aer</div>
+    <div class="option" onclick="checkAnswer(this, false)">Nu are niciun efect asupra climei</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">7. Ce înseamnă "dezvoltare durabilă"?</div>
+    <div class="option" onclick="checkAnswer(this, true)">Satisfacerea nevoilor prezente fără a compromite resursele viitoare</div>
+    <div class="option" onclick="checkAnswer(this, false)">Folosirea tuturor resurselor disponibile acum</div>
+    <div class="option" onclick="checkAnswer(this, false)">Dezvoltarea rapidă fără planificare</div>
+    <div class="option" onclick="checkAnswer(this, false)">Construirea fără restricții în zone protejate</div>
+  </div>
+
+  <div class="question-block">
+    <div class="question">8. Care dintre următoarele metode ajută la reducerea poluării apei?</div>
+    <div class="option" onclick="checkAnswer(this, true)">Evitarea aruncării substanțelor chimice în râuri și lacuri</div>
+    <div class="option" onclick="checkAnswer(this, false)">Aruncarea deșeurilor în râuri</div>
+    <div class="option" onclick="checkAnswer(this, false)">Folosirea excesivă a fertilizatorilor chimici</div>
+    <div class="option" onclick="checkAnswer(this, false)">Ignorarea surselor de poluare</div>
+  </div>
+
+  <br>
+  <button onclick="window.location.href='/'">Back to Control</button>
+
+  <script>
+    function checkAnswer(elem, isCorrect) {
+      const block = elem.closest('.question-block');
+      const options = block.querySelectorAll('.option');
+      options.forEach(o => o.style.pointerEvents = 'none');
+      if (isCorrect) {
+        elem.classList.add("correct");
+      } else {
+        elem.classList.add("incorrect");
+      }
+    }
+  </script>
+</body>
+</html>
+)rawliteral";
+
+// Helper function
+void updateLEDs() {
+  digitalWrite(redLED, redOn ? HIGH : LOW);
+  digitalWrite(greenLED, greenOn ? HIGH : LOW);
+  digitalWrite(blueLED, blueOn ? HIGH : LOW);
+}
+
+void handleCommand(String cmd) {
+  if (cmd == "red") redOn = !redOn;
+  else if (cmd == "green") greenOn = !greenOn;
+  else if (cmd == "blue") blueOn = !blueOn;
+  else if (cmd == "all_on") redOn = greenOn = blueOn = true;
+  else if (cmd == "all_off") redOn = greenOn = blueOn = false;
+
+  updateLEDs();
+}
+
+void handleRoot() {
+  server.send(200, "text/html", htmlPage);
+}
+
+void handleStatus() {
+  String status = "Red: " + String(redOn ? "ON" : "OFF") + "\n";
+  status += "Green: " + String(greenOn ? "ON" : "OFF") + "\n";
+  status += "Blue: " + String(blueOn ? "ON" : "OFF");
+  server.send(200, "text/plain", status);
+}
+
+void handleCommandRoute() {
+  String path = server.uri();
+  path.remove(0, 1); // Remove leading '/'
+  if (path == "status") handleStatus();
+  else {
+    handleCommand(path);
+    server.send(200, "text/plain", "OK: " + path);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Set LED pins
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+  pinMode(blueLED, OUTPUT);
+  updateLEDs();
+
+  // Start WiFi AP
+  WiFi.softAP(ssid, password);
+  Serial.println("Access Point Started");
+  Serial.println("Connect to WiFi SSID: " + String(ssid));
+  Serial.println("Then open http://192.168.4.1 in a browser");
+
+  // Setup web server routes
+  server.on("/", handleRoot);
+  server.on("/quiz", []() {
+    server.send(200, "text/html", quiz);
+  });
+  server.onNotFound(handleCommandRoute);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
